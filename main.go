@@ -23,35 +23,6 @@ func main() {
 	}
 
 	getOutput(files)
-
-	// files, err := ioutil.ReadDir(searchDir)
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
-
-	// output := xlsx.NewFile()
-	// sheet, err := output.AddSheet("report")
-
-	// for _, file := range files {
-	// 	path, e := os.Getwd()
-	// 	if e != nil {
-	// 		fmt.Printf("Error %v", err)
-	// 	}
-	// 	csv, err := registry.ReadCSVFromBundleDirectory(path + "/tmp/" + file.Name())
-	// 	if err != nil {
-	// 		fmt.Printf("Error %v", err)
-	// 	}
-
-	// 	row := sheet.AddRow()
-	// 	cell := row.AddCell()
-	// 	cell.Value = csv.GetName()
-	// 	row.AddCell().Value = csv.Kind
-	// }
-
-	// outputName := time.Now().Format("Mon-Jan2-15:04:05PST-2006")
-	// if err := output.Save(outputName + ".xlsx"); err != nil {
-	// 	println(err.Error())
-	// }
 }
 
 func getOutput(files []os.FileInfo) error {
@@ -73,10 +44,13 @@ func getOutput(files []os.FileInfo) error {
 
 		addValueToSheet(sheet, csv)
 	}
-	outputName := time.Now().Format("Mon-Jan2-15:04:05PST-2006")
-	if err := output.Save(outputName + ".xlsx"); err != nil {
-		println(err.Error())
-	}
+
+	defer func() {
+		outputName := time.Now().Format("Mon-Jan2-15:04:05PST-2006")
+		if err := output.Save(outputName + ".xlsx"); err != nil {
+			println(err.Error())
+		}
+	}()
 
 	return nil
 }
