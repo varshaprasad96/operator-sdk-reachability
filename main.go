@@ -4,14 +4,21 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"path"
 	"time"
 
+	"github.com/operator-framework/api/pkg/operators"
 	"github.com/operator-framework/operator-registry/pkg/registry"
 	"github.com/tealeg/xlsx"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/yaml"
 )
 
 var (
 	searchDir = "/Users/vnarsing/go/src/github.com/varshaprasad96/operator-sdk-rechability/tmp"
+	builder   = "operators.operatorframework.io/builder"
+	layout    = "operators.operatorframework.io/project_layout"
 )
 
 func main() {
@@ -22,7 +29,10 @@ func main() {
 		fmt.Printf("%v", err)
 	}
 
-	getOutput(files)
+	err = getOutput(files)
+	if err != nil {
+		fmt.Printf("%v", err)
+	}
 }
 
 func getOutput(files []os.FileInfo) error {
@@ -37,12 +47,12 @@ func getOutput(files []os.FileInfo) error {
 		if e != nil {
 			return err
 		}
-		csv, err := registry.ReadCSVFromBundleDirectory(path + "/tmp/" + file.Name())
+		csvManifests, err := ReadCSVFromBundleDirectory(path + "/tmp/" + file.Name())
 		if err != nil {
 			return err
 		}
 
-		addValueToSheet(sheet, csv)
+		addValueToSheet(sheet, csvManifests)
 	}
 
 	defer func() {
@@ -58,9 +68,9 @@ func getOutput(files []os.FileInfo) error {
 func doSDKAnnotationsExist(csv *registry.ClusterServiceVersion) (string, string, bool) {
 	annotations := csv.GetAnnotations()
 
-	_, ok := annotations["operators.operatorframework.io/builder"]
+	_, ok := annotations[builder]
 	if ok {
-		return annotations["operators.operatorframework.io/builder"], annotations["operators.operatorframework.io/project_layout"], true
+		return annotations[builder], annotations[layout], true
 	}
 	return "", "", false
 }
@@ -73,17 +83,19 @@ func getDirContents() ([]os.FileInfo, error) {
 	return files, nil
 }
 
-func addValueToSheet(sh *xlsx.Sheet, csv *registry.ClusterServiceVersion) {
-	row := sh.AddRow()
-	row.AddCell().Value = csv.GetName()
+func addValueToSheet(sh *xlsx.Sheet, csvList *[]registry.ClusterServiceVersion) {
+	for _, csv := range *csvList {
+		row := sh.AddRow()
+		row.AddCell().Value = csv.GetName()
 
-	builder, layout, sdkStampsExist := doSDKAnnotationsExist(csv)
-	if sdkStampsExist {
-		row.AddCell().Value = "Yes"
-		row.AddCell().Value = builder
-		row.AddCell().Value = layout
-	} else {
-		row.AddCell().Value = "No"
+		builder, layout, sdkStampsExist := doSDKAnnotationsExist(&csv)
+		if sdkStampsExist {
+			row.AddCell().Value = "Yes"
+			row.AddCell().Value = builder
+			row.AddCell().Value = layout
+		} else {
+			row.AddCell().Value = "No"
+		}
 	}
 }
 
@@ -91,6 +103,51 @@ func initializeReport(sh *xlsx.Sheet) {
 	row := sh.AddRow()
 	row.AddCell().Value = "Operator name"
 	row.AddCell().Value = "Do sdk lebels exist"
-	row.AddCell().Value = "csv-builder"
-	row.AddCell().Value = "csv-layout"
+	row.AddCell().Value = "operator-builder"
+	row.AddCell().Value = "operator-layout"
+}
+
+func ReadCSVFromBundleDirectory(bundleDir string) (*[]registry.ClusterServiceVersion, error) {
+	dirContent, err := ioutil.ReadDir(bundleDir)
+	if err != nil {
+		return nil, fmt.Errorf("error reading bundle directory %s, %v", bundleDir, err)
+	}
+
+	files := []string{}
+	for _, f := range dirContent {
+		if !f.IsDir() {
+			files = append(files, f.Name())
+		}
+	}
+
+	csvList := make([]registry.ClusterServiceVersion, 0)
+
+	csv := registry.ClusterServiceVersion{}
+	for _, file := range files {
+		yamlReader, err := os.Open(path.Join(bundleDir, file))
+		if err != nil {
+			continue
+		}
+
+		unstructuredCSV := unstructured.Unstructured{}
+
+		decoder := yaml.NewYAMLOrJSONDecoder(yamlReader, 30)
+		if err = decoder.Decode(&unstructuredCSV); err != nil {
+			continue
+		}
+
+		if unstructuredCSV.GetKind() != operators.ClusterServiceVersionKind {
+			continue
+		}
+
+		if err := runtime.DefaultUnstructuredConverter.FromUnstructured(unstructuredCSV.UnstructuredContent(),
+			&csv); err != nil {
+			return nil, err
+		}
+
+		csvList = append(csvList, csv)
+
+	}
+	return &csvList, nil
+
 }
