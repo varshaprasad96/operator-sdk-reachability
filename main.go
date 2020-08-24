@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"os/exec"
 	"path"
 	"time"
 
@@ -19,9 +20,13 @@ var (
 	searchDir = "/Users/vnarsing/go/src/github.com/varshaprasad96/operator-sdk-rechability/tmp"
 	builder   = "operators.operatorframework.io/builder"
 	layout    = "operators.operatorframework.io/project_layout"
+	index     = []string{"registry.redhat.io/redhat/redhat-marketplace-index:v4.6", "quay.io/openshift-community-operators/catalog:latest",
+		"registry.redhat.io/redhat/certified-operator-index:v4.6", "registry.redhat.io/redhat/redhat-operator-index:v4.6"}
 )
 
 func main() {
+
+	runOpmCommand()
 
 	files, err := getDirContents()
 
@@ -35,6 +40,29 @@ func main() {
 	}
 }
 
+func runOpmCommand() {
+	var cmd *exec.Cmd
+
+	// create a folder to store data
+	cmd = exec.Command("mkdir", "tmp")
+
+	err := cmd.Run()
+	if err != nil {
+		fmt.Printf("error creating tmp directory. Delete if already exists")
+	}
+
+	// run opm command, binary is already present in the root of the project. Package name is a placeholder.
+	for _, indexName := range index {
+		cmd = exec.Command("./opm", "index", "export", "-i", indexName, "-o", "api-operator", "-f", "tmp")
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		err = cmd.Run()
+		if err != nil {
+			fmt.Printf("Error running opm command with index %s : %v", indexName, err)
+		}
+	}
+}
+
 func getOutput(files []os.FileInfo) error {
 	output := xlsx.NewFile()
 	sheet, err := output.AddSheet("report")
@@ -43,6 +71,9 @@ func getOutput(files []os.FileInfo) error {
 	initializeReport(sheet)
 
 	for _, file := range files {
+		if file.Name() == "package.yaml" {
+			continue
+		}
 		path, e := os.Getwd()
 		if e != nil {
 			return err
@@ -57,9 +88,15 @@ func getOutput(files []os.FileInfo) error {
 
 	defer func() {
 		outputName := time.Now().Format("Mon-Jan2-15:04:05PST-2006")
-		if err := output.Save(outputName + ".xlsx"); err != nil {
+		if err := output.Save("report/" + outputName + ".xlsx"); err != nil {
 			println(err.Error())
 		}
+		cmd := exec.Command("rm", "-rf", "tmp")
+		err = cmd.Run()
+		if err != nil {
+			fmt.Printf("error deleting tmp files")
+		}
+
 	}()
 
 	return nil
@@ -91,10 +128,12 @@ func addValueToSheet(sh *xlsx.Sheet, csvList *[]registry.ClusterServiceVersion) 
 		builder, layout, sdkStampsExist := doSDKAnnotationsExist(&csv)
 		if sdkStampsExist {
 			row.AddCell().Value = "Yes"
+			row.AddCell().Value = csv.GetAnnotations()["createdAt"]
 			row.AddCell().Value = builder
 			row.AddCell().Value = layout
 		} else {
 			row.AddCell().Value = "No"
+			row.AddCell().Value = csv.GetAnnotations()["createdAt"]
 		}
 	}
 }
@@ -102,7 +141,8 @@ func addValueToSheet(sh *xlsx.Sheet, csvList *[]registry.ClusterServiceVersion) 
 func initializeReport(sh *xlsx.Sheet) {
 	row := sh.AddRow()
 	row.AddCell().Value = "Operator name"
-	row.AddCell().Value = "Do sdk lebels exist"
+	row.AddCell().Value = "Do sdk labels exist"
+	row.AddCell().Value = "Created At"
 	row.AddCell().Value = "operator-builder"
 	row.AddCell().Value = "operator-layout"
 }
