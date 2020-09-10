@@ -12,10 +12,21 @@ The report is in the form of an Excel sheet present inside `report/` folder. It 
 
 The `opm` binary utilized for the project is also present in the root of this project. It has minor modifications compared to the one existing in the operator-registry repository.
 
-To generate a similar report at any point of time, run:
+To generate a similar report at any point of time:
+
+Clone the repository:
+
+```
+git clone https://github.com/varshaprasad96/operator-sdk-rechability.git
+cd operator-sdk-rechability
+```
+
+and run,
 
 ```Go
 go run main.go
 ```
 
-This would pull the indexes mentioned above, extract the images, unpack them and download the manifests inside `temp` folder. Further, the CSV is parsed and the SDK annotations are extracted, if present. 
+This would pull the indexes mentioned above, extract the images, unpack them and download the manifests inside `temp` folder. Further, the CSV is parsed and the SDK annotations are extracted, if present.
+
+Note: Authenticate yourself to https://catalog.redhat.com/software/containers/explore
