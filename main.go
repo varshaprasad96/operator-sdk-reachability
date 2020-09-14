@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"path/filepath"
 	"time"
 
 	"github.com/operator-framework/api/pkg/operators"
@@ -17,10 +18,9 @@ import (
 )
 
 var (
-	searchDir = "/Users/vnarsing/go/src/github.com/varshaprasad96/operator-sdk-rechability/tmp"
-	builder   = "operators.operatorframework.io/builder"
-	layout    = "operators.operatorframework.io/project_layout"
-	index     = []string{"registry.redhat.io/redhat/redhat-marketplace-index:v4.6", "quay.io/openshift-community-operators/catalog:latest",
+	builder = "operators.operatorframework.io/builder"
+	layout  = "operators.operatorframework.io/project_layout"
+	index   = []string{"registry.redhat.io/redhat/redhat-marketplace-index:v4.6", "quay.io/openshift-community-operators/catalog:latest",
 		"registry.redhat.io/redhat/certified-operator-index:v4.6", "registry.redhat.io/redhat/redhat-operator-index:v4.6"}
 )
 
@@ -61,6 +61,28 @@ func runOpmCommand() {
 			fmt.Printf("Error running opm command with index %s : %v", indexName, err)
 		}
 	}
+}
+
+func getSearchDir() (string, error) {
+	pwd, err := os.Getwd()
+	if err != nil {
+		return "", err
+	}
+
+	wd := filepath.Join(pwd, "tmp")
+	return wd, nil
+}
+
+func getDirContents() ([]os.FileInfo, error) {
+	dir, e := getSearchDir()
+	if e != nil {
+		return nil, e
+	}
+	files, err := ioutil.ReadDir(dir)
+	if err != nil {
+		return nil, err
+	}
+	return files, nil
 }
 
 func getOutput(files []os.FileInfo) error {
@@ -110,14 +132,6 @@ func doSDKAnnotationsExist(csv *registry.ClusterServiceVersion) (string, string,
 		return annotations[builder], annotations[layout], true
 	}
 	return "", "", false
-}
-
-func getDirContents() ([]os.FileInfo, error) {
-	files, err := ioutil.ReadDir(searchDir)
-	if err != nil {
-		return nil, err
-	}
-	return files, nil
 }
 
 func addValueToSheet(sh *xlsx.Sheet, csvList *[]registry.ClusterServiceVersion) {
