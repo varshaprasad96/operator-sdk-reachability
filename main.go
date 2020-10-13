@@ -21,7 +21,7 @@ var (
 	builder = "operators.operatorframework.io/builder"
 	layout  = "operators.operatorframework.io/project_layout"
 	index   = []string{"registry.redhat.io/redhat/redhat-marketplace-index:v4.6", "quay.io/openshift-community-operators/catalog:latest",
-		"registry.redhat.io/redhat/certified-operator-index:v4.6", "registry.redhat.io/redhat/redhat-operator-index:v4.6"}
+		"registry.redhat.io/redhat/certified-operator-index:v4.6", "registry.redhat.io/redhat/redhat-operator-index:v4.6", "quay.io/operatorhubio/catalog:latest"}
 )
 
 func main() {
