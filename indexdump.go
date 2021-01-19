@@ -26,6 +26,7 @@ var (
 	layout  = "operators.operatorframework.io/project_layout"
 )
 
+// todo: remove additional fields
 type ReportColumns struct {
 	Operator           string
 	Version            string
@@ -118,6 +119,7 @@ func main() {
 	}
 }
 
+// Taken from Jeff's script
 func dump(db *sql.DB, sourceDescription, ocpVersion string) {
 	// execute db query
 	row, err := db.Query("SELECT name, csv, bundlepath FROM operatorbundle where csv is not null  order by name")
@@ -159,27 +161,20 @@ func dump(db *sql.DB, sourceDescription, ocpVersion string) {
 			sdkVersion, operatorType = annotations[builder], annotations[layout]
 		}
 
-		// operatorType, sdkVersion := parseBundleImage(bundlepath)
-
 		f, ok := ReportMap[name]
-		if ok {
-			//update the entry's source columns
-			//fmt.Printf("Jeff - update an entry %s\n", name)
-		} else {
-			ReportMap[name] = ReportColumns{
-				Operator:     name,
-				Version:      csvStruct.Spec.Version.String(),
-				Certified:    certified,
-				CreatedAt:    createdAt,
-				Company:      companyName,
-				Repo:         repo,
-				OCPVersion:   ocpVersion,
-				SDKVersion:   sdkVersion,
-				OperatorType: operatorType,
-				Channel:      channel,
-			}
-			f = ReportMap[name]
+		ReportMap[name] = ReportColumns{
+			Operator:     name,
+			Version:      csvStruct.Spec.Version.String(),
+			Certified:    certified,
+			CreatedAt:    createdAt,
+			Company:      companyName,
+			Repo:         repo,
+			OCPVersion:   ocpVersion,
+			SDKVersion:   sdkVersion,
+			OperatorType: operatorType,
+			Channel:      channel,
 		}
+		f = ReportMap[name]
 
 		switch sourceDescription {
 		case source_redhat:
@@ -219,6 +214,7 @@ func getChannel(db *sql.DB, name string) (channel string, err error) {
 	return channelName, nil
 }
 
+// for csv
 func printReport() {
 	keys := make([]string, 0, len(ReportMap))
 	for k := range ReportMap {
@@ -253,6 +249,7 @@ func printReport() {
 	}
 }
 
+// for xlsx
 func getOutput() error {
 	output := xlsx.NewFile()
 	sheet, err := output.AddSheet("overall-report")
